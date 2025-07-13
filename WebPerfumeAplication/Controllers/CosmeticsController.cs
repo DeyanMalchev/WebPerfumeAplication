@@ -46,33 +46,58 @@ namespace WebCosmeticApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Cosmetic cosmetic)
         {
-            if (ModelState.IsValid)
+            if (cosmetic.ImageFile != null)
             {
-                if (cosmetic.ImageFile != null)
+                var wwwRootPath = _hostEnvironment.WebRootPath;
+                string fileName = Path.GetFileNameWithoutExtension(cosmetic.ImageFile.FileName);
+                string extension = Path.GetExtension(cosmetic.ImageFile.FileName);
+                fileName += DateTime.Now.ToString("yyyyMMddHHmmssfff") + extension;
+
+                string uploadsFolder = Path.Combine(wwwRootPath, "uploads");
+                Directory.CreateDirectory(uploadsFolder); // Ensure folder exists
+
+                string path = Path.Combine(uploadsFolder, fileName);
+
+                using (var fileStream = new FileStream(path, FileMode.Create))
                 {
-                    var wwwRootPath = _hostEnvironment.WebRootPath;
-                    string fileName = Path.GetFileNameWithoutExtension(cosmetic.ImageFile.FileName);
-                    string extension = Path.GetExtension(cosmetic.ImageFile.FileName);
-                    fileName = fileName + DateTime.Now.ToString("yyyyMMddHHmmssfff") + extension;
-                    string path = Path.Combine(wwwRootPath + "/uploads/", fileName);
-
-                    // Save file
-                    using (var fileStream = new FileStream(path, FileMode.Create))
-                    {
-                        await cosmetic.ImageFile.CopyToAsync(fileStream);
-                    }
-
-                    // Save file name in DB
-                    cosmetic.Picture = fileName;
+                    await cosmetic.ImageFile.CopyToAsync(fileStream);
                 }
 
+                cosmetic.Picture = "/uploads/" + fileName;
+
+                // NEW: Clear the validation error for Picture if it was due to being null initially
+                ModelState.Remove("Picture"); // This line is crucial!
+            }
+            else
+            {
+                // If ImageFile is null, and Picture is required, you might want to add an error
+                // or handle it based on whether an image is optional for a product.
+                // For now, let's assume it's required for a new product.
+                ModelState.AddModelError("ImageFile", "Please upload an image for the product.");
+            }
+
+
+            if (ModelState.IsValid)
+            {
                 _context.Add(cosmetic);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
 
+            // Debug invalid model
+            foreach (var key in ModelState.Keys)
+            {
+                var state = ModelState[key];
+                foreach (var error in state.Errors)
+                {
+                    Console.WriteLine($"Key: {key}, Error: {error.ErrorMessage}");
+                }
+            }
+
             return View(cosmetic);
         }
+
+
 
         // GET: Cosmetics/Edit/5
         public async Task<IActionResult> Edit(int? id)

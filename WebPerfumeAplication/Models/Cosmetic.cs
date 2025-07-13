@@ -6,17 +6,24 @@ public class Cosmetic
 {
     private string name;
 
+    
     public int Id { get; set; }
 
-    [Required]
     public string Name { get => name; set => name = value; }
+
     public string Brand { get; set; }
+
     public string Category { get; set; }
+
 
     public string Picture { get; set; }
 
+
+
     public string Description { get; set; }
+
     public decimal Price { get; set; }
+
     public int Quantity { get; set; }
 
     [NotMapped]
